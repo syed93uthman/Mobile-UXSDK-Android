@@ -1,4 +1,4 @@
-package com.dji.ux.sample;
+package com.ikramatic.dronemonitor;
 
 import android.app.Activity;
 import android.content.Intent;

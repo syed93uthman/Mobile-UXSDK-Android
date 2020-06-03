@@ -1,4 +1,4 @@
-package com.dji.ux.sample.custom;
+package com.ikramatic.dronemonitor;
 
 import android.content.Context;
 import android.graphics.Canvas;

@@ -1,4 +1,4 @@
-package com.dji.ux.sample;
+package com.ikramatic.dronemonitor;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -14,6 +14,7 @@ import androidx.annotation.NonNull;
 
 import com.dji.mapkit.core.maps.DJIMap;
 import com.dji.mapkit.core.models.DJILatLng;
+import com.ikramatic.dronemonitor.R;
 
 import dji.keysdk.CameraKey;
 import dji.keysdk.KeyManager;

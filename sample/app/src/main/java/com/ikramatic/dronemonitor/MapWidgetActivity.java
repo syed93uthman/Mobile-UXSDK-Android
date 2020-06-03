@@ -1,4 +1,4 @@
-package com.dji.ux.sample;
+package com.ikramatic.dronemonitor;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -37,6 +37,7 @@ import com.dji.mapkit.core.maps.DJIMap;
 import com.dji.mapkit.core.models.DJILatLng;
 import com.dji.mapkit.core.models.annotations.DJIMarker;
 import com.dji.mapkit.core.models.annotations.DJIMarkerOptions;
+import com.ikramatic.dronemonitor.R;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;

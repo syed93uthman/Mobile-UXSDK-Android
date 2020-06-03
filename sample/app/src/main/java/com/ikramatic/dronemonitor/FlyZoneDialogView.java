@@ -1,4 +1,4 @@
-package com.dji.ux.sample;
+package com.ikramatic.dronemonitor;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -12,6 +12,8 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.ScrollView;
 import android.widget.Switch;
+
+import com.ikramatic.dronemonitor.R;
 
 import java.util.Random;
 

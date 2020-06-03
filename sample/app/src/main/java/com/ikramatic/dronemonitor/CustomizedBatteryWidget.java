@@ -1,13 +1,12 @@
-package com.dji.ux.sample.custom;
+package com.ikramatic.dronemonitor;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
-import com.dji.ux.sample.R;
+import com.ikramatic.dronemonitor.R;
 
 import dji.ux.model.base.BaseDynamicWidgetAppearances;
 import dji.ux.widget.BatteryWidget;

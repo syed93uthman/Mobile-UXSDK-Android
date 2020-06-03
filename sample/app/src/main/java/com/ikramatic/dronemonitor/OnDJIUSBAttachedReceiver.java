@@ -1,4 +1,4 @@
-package com.dji.ux.sample;
+package com.ikramatic.dronemonitor;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
