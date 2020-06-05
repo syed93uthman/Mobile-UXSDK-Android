@@ -155,8 +155,19 @@
         android:background="@color/dark_gray"
         android:orientation="horizontal">
         <TextView
+            android:id="@+id/conStatusTextView"
+            android:layout_width="95dp"
+            android:layout_height="35dp"
+            android:textSize="14sp"
+            android:layout_margin="5dp"
+            android:padding="4dp"
+            android:gravity="center_vertical"
+            android:textColor="@color/black"
+            android:background="@color/white"
+            android:text=" Disconnect "/>
+        <TextView
             android:id="@+id/latTextView"
-            android:layout_width="80dp"
+            android:layout_width="120dp"
             android:layout_height="35dp"
             android:textSize="14sp"
             android:layout_margin="5dp"
@@ -167,7 +178,7 @@
             android:text="Lat :"/>
         <TextView
             android:id="@+id/longTextView"
-            android:layout_width="80dp"
+            android:layout_width="120dp"
             android:layout_height="35dp"
             android:textSize="14sp"
             android:layout_margin="5dp"
@@ -175,7 +186,7 @@
             android:gravity="center_vertical"
             android:textColor="@color/black"
             android:background="@color/white"
-            android:text="Long :"/>
+            android:text="Lng :"/>
     </LinearLayout>
     <dji.ux.widget.ManualFocusWidget
         android:layout_alignTop="@+id/camera2"
