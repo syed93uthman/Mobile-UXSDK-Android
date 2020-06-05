@@ -7,7 +7,7 @@
                 android:layout_height="match_parent"
                 android:background="#242d34"
                 android:orientation="horizontal"
-                tools:context="com.dji.ux.sample.com.ikramatic.ux.sample.CustomizedWidgetsActivity">
+                tools:context="com.ikramatic.dronemonitor.CustomizedWidgetsActivity">
 
     <dji.ux.widget.FPVWidget
         android:id="@+id/fpv_custom_widget"
