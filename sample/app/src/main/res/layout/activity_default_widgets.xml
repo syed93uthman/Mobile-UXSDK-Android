@@ -145,6 +145,38 @@
             android:layout_width="35dp"
             android:layout_height="35dp"/>
     </LinearLayout>
+    <LinearLayout
+        android:id="@+id/latlong"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:layout_below="@id/camera2"
+        android:layout_toLeftOf="@+id/CameraCapturePanel"
+        android:background="@color/dark_gray"
+        android:orientation="horizontal">
+        <TextView
+            android:id="@+id/latTextView"
+            android:layout_width="80dp"
+            android:layout_height="35dp"
+            android:textSize="14sp"
+            android:layout_margin="5dp"
+            android:padding="4dp"
+            android:gravity="center_vertical"
+            android:textColor="@color/black"
+            android:background="@color/white"
+            android:text="Lat :"/>
+        <TextView
+            android:id="@+id/longTextView"
+            android:layout_width="80dp"
+            android:layout_height="35dp"
+            android:textSize="14sp"
+            android:layout_margin="5dp"
+            android:padding="4dp"
+            android:gravity="center_vertical"
+            android:textColor="@color/black"
+            android:background="@color/white"
+            android:text="Long :"/>
+    </LinearLayout>
     <dji.ux.widget.ManualFocusWidget
         android:layout_alignTop="@+id/camera2"
         android:layout_toLeftOf="@+id/camera2"
