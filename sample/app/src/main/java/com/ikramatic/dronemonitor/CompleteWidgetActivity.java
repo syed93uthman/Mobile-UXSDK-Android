@@ -9,15 +9,26 @@ import android.view.animation.Animation;
 import android.view.animation.Transformation;
 import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 
 import com.dji.mapkit.core.maps.DJIMap;
 import com.dji.mapkit.core.models.DJILatLng;
 import com.ikramatic.dronemonitor.R;
+import com.ikramatic.dronemonitor.MApplication;
+import com.ikramatic.dronemonitor.GEODemoApplication;
 
+import dji.common.flightcontroller.FlightControllerState;
+import dji.common.realname.AircraftBindingState;
+import dji.common.realname.AppActivationState;
 import dji.keysdk.CameraKey;
 import dji.keysdk.KeyManager;
+import dji.sdk.base.BaseProduct;
+import dji.sdk.flightcontroller.FlightController;
+import dji.sdk.products.Aircraft;
+import dji.sdk.realname.AppActivationManager;
+import dji.sdk.sdkmanager.DJISDKManager;
 import dji.ux.widget.FPVWidget;
 import dji.ux.widget.MapWidget;
 import dji.ux.widget.controls.CameraControlsWidget;
@@ -41,6 +52,13 @@ public class CompleteWidgetActivity extends Activity {
     private int deviceWidth;
     private int deviceHeight;
 
+    protected TextView conStatusTextView;
+    protected TextView latTextView;
+    protected TextView longTextView;
+
+    private FlightController mFlightController = null;
+    private double droneLocationLat = 181, droneLocationLng = 181;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -53,6 +71,11 @@ public class CompleteWidgetActivity extends Activity {
         DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
         deviceHeight = displayMetrics.heightPixels;
         deviceWidth = displayMetrics.widthPixels;
+
+        conStatusTextView = (TextView) findViewById(R.id.conStatusTextView);
+        latTextView = (TextView) findViewById(R.id.latTextView);
+        longTextView = (TextView) findViewById(R.id.longTextView);
+
 
         mapWidget = findViewById(R.id.map_widget);
         mapWidget.initAMap(new MapWidget.OnMapReadyListener() {
@@ -184,6 +207,8 @@ public class CompleteWidgetActivity extends Activity {
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
 
         mapWidget.onResume();
+        updateTitleBar();
+        initFlightController();
     }
 
     @Override
@@ -241,5 +266,80 @@ public class CompleteWidgetActivity extends Activity {
             p.bottomMargin = mMargin;
             mView.requestLayout();
         }
+    }
+
+    private void updateTitleBar() {
+        if (conStatusTextView == null) return;
+        boolean ret = false;
+        BaseProduct product = GEODemoApplication.getProductInstance();
+        if (product != null) {
+            if (product.isConnected()) {
+                //The product is connected
+                CompleteWidgetActivity.this.runOnUiThread(new Runnable() {
+                    public void run() {
+                        //conStatusTextView.setText(GEODemoApplication.getProductInstance().getModel() + " Connected");
+                        conStatusTextView.setText("Connected");
+                    }
+                });
+                ret = true;
+            } else {
+                if (product instanceof Aircraft) {
+                    Aircraft aircraft = (Aircraft) product;
+                    if (aircraft.getRemoteController() != null && aircraft.getRemoteController().isConnected()) {
+                        // The product is not connected, but the remote controller is connected
+                        CompleteWidgetActivity.this.runOnUiThread(new Runnable() {
+                            public void run() {
+                                conStatusTextView.setText("only RC");
+                            }
+                        });
+                        ret = true;
+                    }
+                }
+            }
+        }
+        if (!ret) {
+            // The product or the remote controller are not connected.
+
+            CompleteWidgetActivity.this.runOnUiThread(new Runnable() {
+                public void run() {
+                    conStatusTextView.setText("Disconnected");
+                }
+            });
+        }
+    }
+
+    private void initFlightController() {
+
+        if (isFlightControllerSupported()) {
+            mFlightController = ((Aircraft) DJISDKManager.getInstance().getProduct()).getFlightController();
+            mFlightController.setStateCallback(new FlightControllerState.Callback() {
+                @Override
+                public void onUpdate(FlightControllerState
+                                             djiFlightControllerCurrentState) {
+                    droneLocationLat = djiFlightControllerCurrentState.getAircraftLocation().getLatitude();
+                    droneLocationLng = djiFlightControllerCurrentState.getAircraftLocation().getLongitude();
+
+                    latTextView.setText("Lat :" + String.valueOf(droneLocationLat));
+                    longTextView.setText("Lng :" + String.valueOf(droneLocationLng));
+                    updateDroneLocation();
+                }
+            });
+        }
+    }
+
+    private void updateDroneLocation(){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                latTextView.setText("Lat :" + String.valueOf(droneLocationLat));
+                longTextView.setText("Lng :" + String.valueOf(droneLocationLng));
+            }
+        });
+    }
+
+    private boolean isFlightControllerSupported() {
+        return DJISDKManager.getInstance().getProduct() != null &&
+                DJISDKManager.getInstance().getProduct() instanceof Aircraft &&
+                ((Aircraft) DJISDKManager.getInstance().getProduct()).getFlightController() != null;
     }
 }
