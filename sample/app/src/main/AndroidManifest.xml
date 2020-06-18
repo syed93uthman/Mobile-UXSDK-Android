@@ -17,6 +17,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <application
         android:name="com.ikramatic.dronemonitor.MApplication"
         android:allowBackup="true"
@@ -101,6 +102,8 @@
             android:launchMode = "singleTop"
             android:screenOrientation="sensorLandscape"
             android:theme="@style/MapTheme" />
+        <service android:name="org.eclipse.paho.android.service.MqttService" >
+        </service>
 
     </application>
 
