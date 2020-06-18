@@ -2,14 +2,17 @@ package com.ikramatic.dronemonitor;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.Transformation;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
@@ -18,6 +21,13 @@ import com.dji.mapkit.core.models.DJILatLng;
 import com.ikramatic.dronemonitor.R;
 import com.ikramatic.dronemonitor.MApplication;
 import com.ikramatic.dronemonitor.GEODemoApplication;
+
+import org.eclipse.paho.android.service.MqttAndroidClient;
+import org.eclipse.paho.client.mqttv3.IMqttActionListener;
+import org.eclipse.paho.client.mqttv3.IMqttToken;
+import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttException;
+import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 import dji.common.flightcontroller.FlightControllerState;
 import dji.common.realname.AircraftBindingState;
@@ -56,6 +66,22 @@ public class CompleteWidgetActivity extends Activity {
     protected TextView latTextView;
     protected TextView longTextView;
 
+    protected Button connectButton;
+    protected Button sendButton;
+
+    MqttAndroidClient client ;
+    MqttMessage msg;
+
+    String port = "1883";
+    String brokerIp = "tcp://192.168.0.176:"+port;
+    String topic;
+    String message;
+    String clientId;
+
+    Boolean conStatus = false;
+
+    private Handler handler = new Handler();
+
     private FlightController mFlightController = null;
     private double droneLocationLat = 181, droneLocationLng = 181;
 
@@ -76,6 +102,12 @@ public class CompleteWidgetActivity extends Activity {
         latTextView = (TextView) findViewById(R.id.latTextView);
         longTextView = (TextView) findViewById(R.id.longTextView);
 
+        connectButton = (Button) findViewById(R.id.connectButton);
+        sendButton = (Button) findViewById(R.id.sendButton);
+
+        clientId = MqttClient.generateClientId();
+
+        client = new MqttAndroidClient(CompleteWidgetActivity.this,brokerIp,clientId);
 
         mapWidget = findViewById(R.id.map_widget);
         mapWidget.initAMap(new MapWidget.OnMapReadyListener() {
@@ -110,7 +142,67 @@ public class CompleteWidgetActivity extends Activity {
             }
         });
         updateSecondaryVideoVisibility();
+
+        connectButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(conStatus == false) {
+                    Toast.makeText(CompleteWidgetActivity.this, "Connecting", Toast.LENGTH_LONG).show();
+                    try {
+                        IMqttToken token = client.connect();
+                        token.setActionCallback(new IMqttActionListener() {
+                            @Override
+                            public void onSuccess(IMqttToken asyncActionToken) {
+                                Toast.makeText(CompleteWidgetActivity.this, "Connected", Toast.LENGTH_LONG).show();
+                                topic = "/drone1/status";
+                                message = "Connected to Drone";
+                                msg = new MqttMessage(message.getBytes());
+                                try {
+                                    client.publish(topic, msg);
+                                    sendButton.setEnabled(true);
+                                    runableCode.run();
+                                } catch (MqttException e) {
+                                    e.printStackTrace();
+                                }
+                                conStatus = true;
+                            }
+
+                            @Override
+                            public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
+                                Toast.makeText(CompleteWidgetActivity.this, "Fail to connect", Toast.LENGTH_LONG).show();
+                                conStatus = false;
+                            }
+                        });
+                    } catch (MqttException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+
+        sendButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mqttPub("/drone1/lat","123");
+                mqttPub("/drone1/long","321");
+                handler.removeCallbacks(runableCode);
+                sendButton.setEnabled(false);
+                conStatus = false;
+            }
+        });
+
+
+
     }
+
+    private Runnable runableCode = new Runnable() {
+        @Override
+        public void run() {
+            mqttPub("/drone1/lat",String.valueOf(droneLocationLat));
+            mqttPub("/drone1/long",String.valueOf(droneLocationLng));
+            handler.postDelayed(this,2000);
+        }
+    };
 
     private void onViewClick(View view) {
         if (view == fpvWidget && !isMapMini) {
@@ -342,4 +434,17 @@ public class CompleteWidgetActivity extends Activity {
                 DJISDKManager.getInstance().getProduct() instanceof Aircraft &&
                 ((Aircraft) DJISDKManager.getInstance().getProduct()).getFlightController() != null;
     }
+
+    protected void mqttPub(String topic, String message){
+        this.topic = topic;
+        this.message = message;
+        msg = new MqttMessage(this.message.getBytes());
+        try {
+            client.publish(topic, msg);
+            sendButton.setEnabled(true);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
+
 }
