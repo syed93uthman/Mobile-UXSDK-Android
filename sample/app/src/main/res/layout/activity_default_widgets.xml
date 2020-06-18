@@ -188,6 +188,35 @@
             android:background="@color/white"
             android:text="Lng :"/>
     </LinearLayout>
+    <LinearLayout
+        android:id="@+id/mqttLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_below="@id/latlong"
+        android:layout_toLeftOf="@+id/CameraCapturePanel">
+        <Button
+            android:id="@+id/connectButton"
+            android:layout_width="120dp"
+            android:layout_height="35dp"
+            android:textSize="14sp"
+            android:layout_margin="5dp"
+            android:padding="4dp"
+            android:gravity="center_vertical"
+            android:textColor="@color/black"
+            android:text="Connect to Server"/>
+        <Button
+            android:id="@+id/sendButton"
+            android:layout_width="120dp"
+            android:layout_height="35dp"
+            android:textSize="14sp"
+            android:layout_margin="5dp"
+            android:padding="4dp"
+            android:gravity="center_vertical"
+            android:textColor="@color/black"
+            android:text="Send"
+            android:enabled="false"/>
+    </LinearLayout>
     <dji.ux.widget.ManualFocusWidget
         android:layout_alignTop="@+id/camera2"
         android:layout_toLeftOf="@+id/camera2"
