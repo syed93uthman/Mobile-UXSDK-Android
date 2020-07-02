@@ -8,10 +8,14 @@
     android:layout_height="match_parent">
 
     <TableRow
-        android:paddingTop="40dp"
-        android:layout_weight="1"
         android:layout_width="match_parent"
-        android:layout_height="0dp"/>
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:paddingTop="40dp"
+        android:visibility="invisible" >
+
+
+    </TableRow>
 
     <Button
         android:id="@+id/complete_ui_widgets"
@@ -22,29 +26,103 @@
         android:padding="14dp"
         android:textColor="@color/background_blue"
         android:text="Complete Demo of Default UI Widgets"/>
+
+<LinearLayout android:layout_height="40dp" android:layout_width="match_parent" android:layout_margin="10dp" android:orientation="horizontal" >
+
+    <EditText
+        android:id="@+id/ipEditText"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="70"
+        android:background="@drawable/bgtextfield"
+        android:ems="10"
+        android:inputType="textPersonName"
+        android:paddingLeft="20dp"
+        android:text="192.168.0.176"
+        android:textColor="@color/black" />
+
+    <EditText
+        android:id="@+id/portEditText"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginLeft="10dp"
+        android:layout_weight="20"
+        android:background="@drawable/bgtextfield"
+        android:ems="10"
+        android:inputType="textPersonName"
+        android:paddingLeft="20dp"
+        android:text="3052"
+        android:textColor="@color/black" />
+    <Button
+        android:id="@+id/connectButton"
+        android:layout_height="match_parent"
+        android:textSize="14sp"
+        android:textColor="@color/white"
+        android:layout_weight="30"
+        android:text="Connect"
+        android:background="@drawable/bgbutton"
+        android:layout_marginLeft="10dp"
+        android:layout_width="0dp" />
+</LinearLayout>
+
+    <LinearLayout android:layout_height="40dp"
+        android:layout_width="100dp"
+        android:layout_margin="10dp"
+        android:orientation="horizontal"
+        android:weightSum="100" >
+
+        <EditText
+            android:id="@+id/topicEditText"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="30"
+            android:background="@drawable/bgtextfield"
+            android:ems="10"
+            android:inputType="textPersonName"
+            android:paddingLeft="20dp"
+            android:text="/drone1/data"
+            android:textColor="@color/black" />
+
+        <Button
+            android:id="@+id/testButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginLeft="10dp"
+            android:layout_weight="30"
+            android:background="@drawable/bgbutton"
+            android:enabled="false"
+            android:text="Test"
+            android:textColor="@color/white"
+            android:textSize="14sp" />
+    </LinearLayout>
+
     <Button
         android:id="@+id/bt_customized_ui_widgets"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="14sp"
         android:layout_margin="10dp"
         android:padding="14dp"
+        android:text="Demo on Customized UI Widgets"
         android:textColor="@color/background_blue"
-        android:text="Demo on Customized UI Widgets"/>
+        android:textSize="14sp"
+        android:visibility="invisible" />
+
     <Button
         android:id="@+id/bt_map_widget"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="14sp"
         android:layout_margin="10dp"
         android:padding="14dp"
+        android:text="Map Widget Demo"
         android:textColor="@color/background_blue"
-        android:text="Map Widget Demo"/>
+        android:textSize="14sp"
+        android:visibility="invisible" />
 
     <TableRow
-        android:layout_weight="1"
         android:layout_width="match_parent"
-        android:layout_height="0dp"/>
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="invisible" />
 
     <EditText
         android:id="@+id/edittext_bridge_ip"
@@ -61,16 +139,18 @@
         android:padding="2dp"
         android:textColor="@color/white"
         android:textColorHint="@android:color/white"
-        android:textSize="15sp" />
+        android:textSize="15sp"
+        android:visibility="invisible" />
 
     <TextView
         android:id="@+id/version"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="14sp"
         android:layout_margin="10dp"
-        android:textColor="@color/white"
         android:gravity="center"
-        tools:text="Version"/>
+        android:textColor="@color/white"
+        android:textSize="14sp"
+        android:visibility="invisible"
+        tools:text="Version" />
 
 </TableLayout>
