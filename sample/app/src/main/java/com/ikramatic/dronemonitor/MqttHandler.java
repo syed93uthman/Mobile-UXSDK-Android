@@ -24,18 +24,6 @@ public class MqttHandler implements  Serializable {
 
     boolean conStatus = false;
 
-//    public  MqttHandler(MqttAndroidClient client,
-//                        String brokerIp,
-//                        String port,
-//                        String topic,
-//                        String clientId){
-//        this.client = client;
-//        this.brokerIp = brokerIp;
-//        this.port = port;
-//        this.topic = topic;
-//        this.clientId = clientId;
-//    }
-
     public void set(String brokerIp, String port, String topic) {
         this.brokerIp = brokerIp;
         this.port = port;
@@ -45,6 +33,7 @@ public class MqttHandler implements  Serializable {
     public void connect(Context context){
         connect(brokerIp, port, topic, context);
     }
+
     public boolean connect(String brokerIp, String port, String topic, Context context){
         set(brokerIp,port,topic);
         if(createClient(context)){
@@ -115,37 +104,11 @@ public class MqttHandler implements  Serializable {
         }
     }
 
-//    protected MqttHandler(Parcel in) {
-//        brokerIp = in.readString();
-//        port = in.readString();
-//        topic = in.readString();
-//        message = in.readString();
-//        clientId = in.readString();
-//    }
-
-//    public static final Creator<MqttHandler> CREATOR = new Creator<MqttHandler>() {
-//        @Override
-//        public MqttHandler createFromParcel(Parcel in) {
-//            return new MqttHandler(in);
-//        }
-//
-//        @Override
-//        public MqttHandler[] newArray(int size) {
-//            return new MqttHandler[size];
-//        }
-//    };
-
-//    @Override
-//    public int describeContents() {
-//        return 0;
-//    }
-//
-//    @Override
-//    public void writeToParcel(Parcel parcel, int i) {
-//        parcel.writeString(brokerIp);
-//        parcel.writeString(port);
-//        parcel.writeString(topic);
-//        parcel.writeString(message);
-//        parcel.writeString(clientId);
-//    }
+    public void destroyClient(){
+        try {
+            client.disconnect();
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
 }
