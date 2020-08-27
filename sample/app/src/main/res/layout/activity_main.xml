@@ -38,7 +38,7 @@
         android:ems="10"
         android:inputType="textPersonName"
         android:paddingLeft="20dp"
-        android:text="192.168.0.176"
+        android:text="60.48.81.62"
         android:textColor="@color/black" />
 
     <EditText
@@ -72,7 +72,7 @@
         android:weightSum="100" >
 
         <EditText
-            android:id="@+id/topicEditText"
+            android:id="@+id/droneIdEditText"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="30"
@@ -80,7 +80,7 @@
             android:ems="10"
             android:inputType="textPersonName"
             android:paddingLeft="20dp"
-            android:text="/drone1/data"
+            android:text="drone1"
             android:textColor="@color/black" />
 
         <Button
@@ -92,6 +92,17 @@
             android:background="@drawable/bgbutton"
             android:enabled="false"
             android:text="Test"
+            android:textColor="@color/white"
+            android:textSize="14sp" />
+        <Button
+            android:id="@+id/dualVideoButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginLeft="10dp"
+            android:layout_weight="30"
+            android:background="@drawable/bgbutton"
+            android:enabled="true"
+            android:text="Dual Video"
             android:textColor="@color/white"
             android:textSize="14sp" />
     </LinearLayout>
