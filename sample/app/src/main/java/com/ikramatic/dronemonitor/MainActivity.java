@@ -5,6 +5,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -21,6 +23,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.PopupMenu;
 import android.widget.TextView;
@@ -29,6 +32,9 @@ import android.widget.Toast;
 import com.ikramatic.dronemonitor.R;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+
+import org.eclipse.paho.client.mqttv3.IMqttToken;
+import org.eclipse.paho.client.mqttv3.internal.wire.MqttSubscribe;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,13 +57,29 @@ public class MainActivity extends Activity implements View.OnClickListener, Popu
     private static final String LAST_USED_BRIDGE_IP = "bridgeip";
     private AtomicBoolean isRegistrationInProgress = new AtomicBoolean(false);
     private static boolean isAppStarted = false;
+
+    MqttHandler mqttHandler;
+
+    public static final String EXTRA_OBJ_MQTT = "com.ikramatic.dronemonitor.EXTRA_OBJ_MQTT";
+
+    EditText ipEditText;
+    EditText portEditText;
+    EditText droneIdEditText;
+
+    Button connectButton;
+    Button dualVideoButton;
+
+    boolean dualVideo = false;
+
+    boolean mqttConnected = false;
+
     private DJISDKManager.SDKManagerCallback registrationCallback = new DJISDKManager.SDKManagerCallback() {
 
         @Override
         public void onRegister(DJIError error) {
             isRegistrationInProgress.set(false);
             if (error == DJISDKError.REGISTRATION_SUCCESS) {
-                loginAccount();
+//                loginAccount();
                 DJISDKManager.getInstance().startConnectionToProduct();
 
                 Toast.makeText(getApplicationContext(), "SDK registration succeeded!", Toast.LENGTH_LONG).show();
@@ -148,9 +170,23 @@ public class MainActivity extends Activity implements View.OnClickListener, Popu
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         isAppStarted = true;
+
+        ipEditText = findViewById(R.id.ipEditText);
+        portEditText = findViewById(R.id.portEditText);
+        droneIdEditText = findViewById(R.id.droneIdEditText);
+
+        connectButton = findViewById(R.id.connectButton);
+        dualVideoButton = findViewById(R.id.dualVideoButton);
+
+        mqttHandler = new MqttHandler();
+
         findViewById(R.id.complete_ui_widgets).setOnClickListener(this);
         findViewById(R.id.bt_customized_ui_widgets).setOnClickListener(this);
         findViewById(R.id.bt_map_widget).setOnClickListener(this);
+        findViewById(R.id.connectButton).setOnClickListener(this);
+        findViewById(R.id.testButton).setOnClickListener(this);
+        dualVideoButton.setOnClickListener(this);
+
         TextView versionText = (TextView) findViewById(R.id.version);
         versionText.setText(getResources().getString(R.string.sdk_version, DJISDKManager.getInstance().getSDKVersion()));
         bridgeModeEditText = (EditText) findViewById(R.id.edittext_bridge_ip);
@@ -262,14 +298,70 @@ public class MainActivity extends Activity implements View.OnClickListener, Popu
 
     @Override
     public void onClick(View view) {
-        Class nextActivityClass;
+        Class nextActivityClass = null;
 
+        boolean nextActivityFlag = false;
         int id = view.getId();
         if (id == R.id.complete_ui_widgets) {
-            nextActivityClass = CompleteWidgetActivity.class;
+            if(mqttConnected) {
+                mqttHandler.disconnect();
+                nextActivityClass = CompleteWidgetActivity.class;
+                nextActivityFlag = true;
+            }
+            else{
+                Toast.makeText(this, "Drone not Connected to Server", Toast.LENGTH_LONG).show();
+            }
         } else if (id == R.id.bt_customized_ui_widgets) {
             nextActivityClass = CustomizedWidgetsActivity.class;
-        } else {
+        }
+        else if(id == R.id.connectButton){
+            if(!mqttConnected) {
+                String ip = ipEditText.getText().toString();
+                String port = portEditText.getText().toString();
+                String topic = "/" + droneIdEditText.getText().toString() + "/data";
+                mqttHandler.set(ip,port,topic);
+                if (mqttHandler.connect(ip, port, topic, this)) {
+                    mqttConnected = true;
+                    Toast.makeText(this, "Connected", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this, "Not Connected", Toast.LENGTH_LONG).show();
+                }
+                findViewById(R.id.testButton).setEnabled(true);
+                connectButton.setText("Disconnect");
+                nextActivityFlag = true;
+            }
+            else{
+                nextActivityFlag = false;
+                mqttConnected = false;
+                findViewById(R.id.testButton).setEnabled(false);
+                connectButton.setText("Connect");
+                mqttHandler.destroyClient();
+            }
+        }
+
+        else if(id == R.id.testButton){
+            if(mqttConnected){
+                mqttHandler.publishMessage("Drone 1 Connected");
+            }
+            else
+                Toast.makeText(this, "System not Connected", Toast.LENGTH_LONG).show();
+
+            nextActivityFlag = false;
+        }
+        else if(id == R.id.dualVideoButton){
+            if(dualVideo == false){
+                dualVideoButton.setBackgroundResource(R.drawable.bgselectedbutton);
+                dualVideoButton.setTextColor(Color.parseColor("#000000"));
+                dualVideo = true;
+            }
+            else{
+                dualVideoButton.setBackgroundResource(R.drawable.bgbutton);
+                dualVideoButton.setTextColor(Color.parseColor("#FFFFFF"));
+                dualVideo = false;
+            }
+
+        }
+        else {
             //nextActivityClass = MapWidgetActivity.class;
             PopupMenu popup = new PopupMenu(this, view);
             popup.setOnMenuItemClickListener(this);
@@ -281,9 +373,16 @@ public class MainActivity extends Activity implements View.OnClickListener, Popu
             popup.show();
             return;
         }
+        if(nextActivityFlag  && nextActivityClass != null){
+            Intent intent = new Intent(this, nextActivityClass);
 
-        Intent intent = new Intent(this, nextActivityClass);
-        startActivity(intent);
+            if(id == R.id.complete_ui_widgets){
+                intent.putExtra(EXTRA_OBJ_MQTT,mqttHandler);
+            }
+
+            startActivity(intent);
+
+        }
     }
 
     @Override

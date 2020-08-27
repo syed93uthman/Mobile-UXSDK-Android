@@ -1,6 +1,8 @@
 package com.ikramatic.dronemonitor;
 
 import android.app.Activity;
+import android.content.Context;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.DisplayMetrics;
@@ -10,6 +12,8 @@ import android.view.animation.Animation;
 import android.view.animation.Transformation;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -17,36 +21,38 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 
 import com.dji.mapkit.core.maps.DJIMap;
+import com.dji.mapkit.core.models.DJIBitmapDescriptorFactory;
 import com.dji.mapkit.core.models.DJILatLng;
-import com.ikramatic.dronemonitor.R;
-import com.ikramatic.dronemonitor.MApplication;
-import com.ikramatic.dronemonitor.GEODemoApplication;
+import com.dji.mapkit.core.models.annotations.DJIMarker;
+import com.dji.mapkit.core.models.annotations.DJIMarkerOptions;
 
-import org.eclipse.paho.android.service.MqttAndroidClient;
-import org.eclipse.paho.client.mqttv3.IMqttActionListener;
-import org.eclipse.paho.client.mqttv3.IMqttToken;
-import org.eclipse.paho.client.mqttv3.MqttClient;
-import org.eclipse.paho.client.mqttv3.MqttException;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.json.JSONException;
+import org.json.JSONObject;
 
+import java.io.IOException;
+
+import dji.common.error.DJIError;
 import dji.common.flightcontroller.FlightControllerState;
-import dji.common.realname.AircraftBindingState;
-import dji.common.realname.AppActivationState;
+import dji.common.gimbal.Attitude;
+import dji.common.gimbal.GimbalState;
+import dji.common.model.LocationCoordinate2D;
+import dji.common.util.CommonCallbacks;
+import dji.common.util.CommonCallbacks.CompletionCallback;
 import dji.keysdk.CameraKey;
 import dji.keysdk.KeyManager;
-import dji.sdk.base.BaseProduct;
 import dji.sdk.flightcontroller.FlightController;
+import dji.sdk.gimbal.Gimbal;
+import dji.sdk.mission.tapfly.TapFlyMissionOperator;
 import dji.sdk.products.Aircraft;
-import dji.sdk.realname.AppActivationManager;
+import dji.sdk.remotecontroller.RemoteController;
 import dji.sdk.sdkmanager.DJISDKManager;
 import dji.ux.widget.FPVWidget;
 import dji.ux.widget.MapWidget;
 import dji.ux.widget.controls.CameraControlsWidget;
 
-/**
- * Activity that shows all the UI elements together
- */
-public class CompleteWidgetActivity extends Activity {
+import com.ikramatic.dronemonitor.manage.RemoteControllerClass;
+
+public final class CompleteWidgetActivity extends Activity {
 
     private MapWidget mapWidget;
     private ViewGroup parentView;
@@ -62,33 +68,54 @@ public class CompleteWidgetActivity extends Activity {
     private int deviceWidth;
     private int deviceHeight;
 
-    protected TextView conStatusTextView;
-    protected TextView latTextView;
-    protected TextView longTextView;
+    public LinearLayout menuLayout, menuHDMILayout;
+    public Button setHomeButton;
+    public Button dualVideoButton;
+    public ImageButton extraMenuButton;
+    public TextView homeLatTextView;
+    public TextView homeLonTextView;
+    public TextView gpsStatusTextView;
+    public int gpsSignallevel = 0;
+    boolean aircraftReady = false;
+    boolean setHomeLocation = false;
+    boolean homeLocationReady = false;
+    boolean dualVideo = false;
+    boolean menuVisible = false;
+    Context context;
 
-    protected Button connectButton;
-    protected Button sendButton;
-
-    MqttAndroidClient client ;
-    MqttMessage msg;
-
-    String port = "1883";
-    String brokerIp = "tcp://192.168.0.176:"+port;
-    String topic;
-    String message;
-    String clientId;
-
-    Boolean conStatus = false;
-
-    private Handler handler = new Handler();
+    JsonHandler myJson;
+    MqttHandler mqttHandler;
+    JSONObject droneJson;
 
     private FlightController mFlightController = null;
-    private double droneLocationLat = 181, droneLocationLng = 181;
+    private RemoteControllerClass mRemotetController;
+    private double droneLocationLat = 0, droneLocationLng = 0;
+    public double homeLocationLat = 0, homeLocationLng = 0;
+    private double prevdroneLocationLat = 0, prevdroneLocationLng = 0;
+    private float droneHeading = 0, droneAltitude = 0, cameraElevation = 0;
+    private double droneRoll = 0, dronePitch = 0;
+
+    private DJIMarker droneMarker = null;
+    private DJIMap myMap;
+    private DJIMarkerOptions markerOptions;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_default_widgets);
+        myJson = new JsonHandler();
+        try {
+            droneJson = myJson.createJson(this.getAssets().open("droneData.json"));
+            droneJson.put("id", "1");
+        } catch (IOException | JSONException e) {
+            e.printStackTrace();
+        }
+        markerOptions = new DJIMarkerOptions();
+
+        mqttHandler = (MqttHandler) getIntent().getSerializableExtra(MainActivity.EXTRA_OBJ_MQTT);
+        mqttHandler.connect(this);
+        context = getApplicationContext();
+        Toast.makeText(this, mqttHandler.brokerIp, Toast.LENGTH_LONG).show();
 
         height = DensityUtil.dip2px(this, 100);
         width = DensityUtil.dip2px(this, 150);
@@ -98,19 +125,20 @@ public class CompleteWidgetActivity extends Activity {
         deviceHeight = displayMetrics.heightPixels;
         deviceWidth = displayMetrics.widthPixels;
 
-        conStatusTextView = (TextView) findViewById(R.id.conStatusTextView);
-        latTextView = (TextView) findViewById(R.id.latTextView);
-        longTextView = (TextView) findViewById(R.id.longTextView);
+        menuLayout = findViewById(R.id.menuLayout);
+        menuHDMILayout = findViewById(R.id.menuHDMILayout);
 
-        connectButton = (Button) findViewById(R.id.connectButton);
-        sendButton = (Button) findViewById(R.id.sendButton);
+        setHomeButton = findViewById(R.id.setHomeButton);
+        homeLatTextView = findViewById(R.id.homeLatTextView);
+        homeLonTextView = findViewById(R.id.homeLonTextView);
+        gpsStatusTextView = findViewById(R.id.gpsStatusTextView);
+        dualVideoButton = findViewById(R.id.dualVideoButton);
+        extraMenuButton = findViewById(R.id.extraMenuButton);
 
-        clientId = MqttClient.generateClientId();
 
-        client = new MqttAndroidClient(CompleteWidgetActivity.this,brokerIp,clientId);
 
         mapWidget = findViewById(R.id.map_widget);
-        mapWidget.initAMap(new MapWidget.OnMapReadyListener() {
+        mapWidget.initGoogleMap(new MapWidget.OnMapReadyListener() {
             @Override
             public void onMapReady(@NonNull DJIMap map) {
                 map.setOnMapClickListener(new DJIMap.OnMapClickListener() {
@@ -119,9 +147,11 @@ public class CompleteWidgetActivity extends Activity {
                         onViewClick(mapWidget);
                     }
                 });
+                myMap = map;
             }
         });
         mapWidget.onCreate(savedInstanceState);
+        initMapView();
 
         parentView = (ViewGroup) findViewById(R.id.root_view);
 
@@ -135,6 +165,42 @@ public class CompleteWidgetActivity extends Activity {
         primaryVideoView = (RelativeLayout) findViewById(R.id.fpv_container);
         secondaryVideoView = (FrameLayout) findViewById(R.id.secondary_video_view);
         secondaryFPVWidget = findViewById(R.id.secondary_fpv_widget);
+
+        setHomeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (aircraftReady) {
+                    setHomeLocation = true;
+                }
+            }
+        });
+
+        dualVideoButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dualVideoModeUpdate(!mRemotetController.getDualVideoStatus());
+            }
+        });
+
+        extraMenuButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (menuVisible == false) {
+                    menuLayout.setVisibility(View.VISIBLE);
+                    menuHDMILayout.setVisibility(View.VISIBLE);
+                    Toast.makeText(CompleteWidgetActivity.this,"true",Toast.LENGTH_LONG).show();
+                    menuVisible = true;
+                } else {
+                    menuLayout.setVisibility(View.INVISIBLE);
+                    menuHDMILayout.setVisibility(View.INVISIBLE);
+
+                    Toast.makeText(CompleteWidgetActivity.this,"false",Toast.LENGTH_LONG).show();
+                    menuVisible = false;
+                }
+
+            }
+        });
+
         secondaryFPVWidget.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -143,66 +209,32 @@ public class CompleteWidgetActivity extends Activity {
         });
         updateSecondaryVideoVisibility();
 
-        connectButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(conStatus == false) {
-                    Toast.makeText(CompleteWidgetActivity.this, "Connecting", Toast.LENGTH_LONG).show();
-                    try {
-                        IMqttToken token = client.connect();
-                        token.setActionCallback(new IMqttActionListener() {
-                            @Override
-                            public void onSuccess(IMqttToken asyncActionToken) {
-                                Toast.makeText(CompleteWidgetActivity.this, "Connected", Toast.LENGTH_LONG).show();
-                                topic = "/drone1/status";
-                                message = "Connected to Drone";
-                                msg = new MqttMessage(message.getBytes());
-                                try {
-                                    client.publish(topic, msg);
-                                    sendButton.setEnabled(true);
-                                    runableCode.run();
-                                } catch (MqttException e) {
-                                    e.printStackTrace();
-                                }
-                                conStatus = true;
-                            }
-
-                            @Override
-                            public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-                                Toast.makeText(CompleteWidgetActivity.this, "Fail to connect", Toast.LENGTH_LONG).show();
-                                conStatus = false;
-                            }
-                        });
-                    } catch (MqttException e) {
-                        e.printStackTrace();
+        new Thread((Runnable) () -> {
+            while (true) {
+                try {
+                    Thread.sleep(1000);
+                    updateData();
+                    if (aircraftReady) {
+                        gpsStatusTextView.setText("Ready");
+                    } else {
+                        //gpsStatusTextView.setText(gpsSignallevel + "");
                     }
+                    if (homeLocationReady && setHomeLocation) {
+                        homeLatTextView.setText("Done ");
+                        homeLonTextView.setText("Done ");
+                        setHomeLocation = false;
+                    }
+
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
             }
-        });
+        }).start();
 
-        sendButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                mqttPub("/drone1/lat","123");
-                mqttPub("/drone1/long","321");
-                handler.removeCallbacks(runableCode);
-                sendButton.setEnabled(false);
-                conStatus = false;
-            }
-        });
-
-
-
+        initFlightController();
+        menuLayout.setVisibility(View.INVISIBLE);
+        menuHDMILayout.setVisibility(View.INVISIBLE);
     }
-
-    private Runnable runableCode = new Runnable() {
-        @Override
-        public void run() {
-            mqttPub("/drone1/lat",String.valueOf(droneLocationLat));
-            mqttPub("/drone1/long",String.valueOf(droneLocationLng));
-            handler.postDelayed(this,2000);
-        }
-    };
 
     private void onViewClick(View view) {
         if (view == fpvWidget && !isMapMini) {
@@ -299,7 +331,6 @@ public class CompleteWidgetActivity extends Activity {
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
 
         mapWidget.onResume();
-        updateTitleBar();
         initFlightController();
     }
 
@@ -360,74 +391,89 @@ public class CompleteWidgetActivity extends Activity {
         }
     }
 
-    private void updateTitleBar() {
-        if (conStatusTextView == null) return;
-        boolean ret = false;
-        BaseProduct product = GEODemoApplication.getProductInstance();
-        if (product != null) {
-            if (product.isConnected()) {
-                //The product is connected
-                CompleteWidgetActivity.this.runOnUiThread(new Runnable() {
-                    public void run() {
-                        //conStatusTextView.setText(GEODemoApplication.getProductInstance().getModel() + " Connected");
-                        conStatusTextView.setText("Connected");
-                    }
-                });
-                ret = true;
-            } else {
-                if (product instanceof Aircraft) {
-                    Aircraft aircraft = (Aircraft) product;
-                    if (aircraft.getRemoteController() != null && aircraft.getRemoteController().isConnected()) {
-                        // The product is not connected, but the remote controller is connected
-                        CompleteWidgetActivity.this.runOnUiThread(new Runnable() {
-                            public void run() {
-                                conStatusTextView.setText("only RC");
-                            }
-                        });
-                        ret = true;
-                    }
-                }
-            }
-        }
-        if (!ret) {
-            // The product or the remote controller are not connected.
-
-            CompleteWidgetActivity.this.runOnUiThread(new Runnable() {
-                public void run() {
-                    conStatusTextView.setText("Disconnected");
-                }
-            });
-        }
-    }
-
     private void initFlightController() {
-
         if (isFlightControllerSupported()) {
             mFlightController = ((Aircraft) DJISDKManager.getInstance().getProduct()).getFlightController();
+            mRemotetController.setController(((Aircraft) DJISDKManager.getInstance().getProduct()).getRemoteController());
+            dualVideoModeInit();
             mFlightController.setStateCallback(new FlightControllerState.Callback() {
                 @Override
                 public void onUpdate(FlightControllerState
                                              djiFlightControllerCurrentState) {
-                    droneLocationLat = djiFlightControllerCurrentState.getAircraftLocation().getLatitude();
-                    droneLocationLng = djiFlightControllerCurrentState.getAircraftLocation().getLongitude();
 
-                    latTextView.setText("Lat :" + String.valueOf(droneLocationLat));
-                    longTextView.setText("Lng :" + String.valueOf(droneLocationLng));
-                    updateDroneLocation();
+                    droneLocationLat = djiFlightControllerCurrentState.getAircraftLocation().getLatitude();  //Lat Double
+                    droneLocationLng = djiFlightControllerCurrentState.getAircraftLocation().getLongitude(); //Long Double
+                    droneAltitude = djiFlightControllerCurrentState.getAircraftLocation().getAltitude(); //Float
+                    droneHeading = mFlightController.getCompass().getHeading(); //Float
+                    droneRoll = djiFlightControllerCurrentState.getAttitude().roll;
+                    dronePitch = djiFlightControllerCurrentState.getAttitude().pitch;
+                    if (!aircraftReady) {
+
+                        if (djiFlightControllerCurrentState.getGPSSignalLevel() != null) {
+                            gpsSignallevel = djiFlightControllerCurrentState.getGPSSignalLevel().value();
+                            if (gpsSignallevel > 3) {
+                                aircraftReady = true;
+                            }
+                        }
+                    }
+                    if (setHomeLocation && aircraftReady) {
+
+                        mFlightController.setHomeLocationUsingAircraftCurrentLocation(new CompletionCallback() {
+                            @Override
+                            public void onResult(DJIError djiError) {
+                                if (djiError != null) {
+                                    if (context != null)
+                                        Toast.makeText(context, djiError.getDescription(), Toast.LENGTH_LONG);
+                                } else {
+                                    if (context != null)
+                                        Toast.makeText(context, "Home Location Success", Toast.LENGTH_LONG);
+                                }
+                            }
+                        });
+
+
+                        mFlightController.getHomeLocation(new CommonCallbacks.CompletionCallbackWith<LocationCoordinate2D>() {
+                            @Override
+                            public void onSuccess(LocationCoordinate2D locationCoordinate2D) {
+                                homeLocationLat = locationCoordinate2D.getLatitude();
+                                homeLocationLng = locationCoordinate2D.getLongitude();
+                                homeLocationReady = true;
+                            }
+
+                            @Override
+                            public void onFailure(DJIError djiError) {
+
+                            }
+                        });
+                    }
+                }
+            });
+            Gimbal gimbal = DJISDKManager.getInstance().getProduct().getGimbal();
+            gimbal.setStateCallback(new GimbalState.Callback() {
+                @Override
+                public void onUpdate(GimbalState gimbalState) {
+                    Attitude gimbalAttitude = gimbalState.getAttitudeInDegrees();
+                    cameraElevation = gimbalAttitude.getPitch(); //Float
                 }
             });
         }
     }
 
-    private void updateDroneLocation(){
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                latTextView.setText("Lat :" + String.valueOf(droneLocationLat));
-                longTextView.setText("Lng :" + String.valueOf(droneLocationLng));
-            }
-        });
+    public void updateData() {
+        try {
+            droneJson.put("lat", String.valueOf(droneLocationLat));
+            droneJson.put("long", String.valueOf(droneLocationLng));
+            droneJson.put("altitude", String.valueOf(droneAltitude));
+            droneJson.put("elevationCam", String.valueOf(cameraElevation));
+            droneJson.put("heading", String.valueOf(droneHeading));
+            droneJson.put("roll", String.valueOf(droneRoll));
+            droneJson.put("pitch", String.valueOf(dronePitch));
+            droneJson.put("update", true);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
+
 
     private boolean isFlightControllerSupported() {
         return DJISDKManager.getInstance().getProduct() != null &&
@@ -435,16 +481,69 @@ public class CompleteWidgetActivity extends Activity {
                 ((Aircraft) DJISDKManager.getInstance().getProduct()).getFlightController() != null;
     }
 
-    protected void mqttPub(String topic, String message){
-        this.topic = topic;
-        this.message = message;
-        msg = new MqttMessage(this.message.getBytes());
-        try {
-            client.publish(topic, msg);
-            sendButton.setEnabled(true);
-        } catch (MqttException e) {
-            e.printStackTrace();
+    private void updateDroneLocation() {
+
+        DJILatLng pos = new DJILatLng(3.0811006794504965, 101.56146941738935);
+        //Create MarkerOptions object
+        markerOptions.position(pos);
+        markerOptions.icon(DJIBitmapDescriptorFactory.fromResource(R.drawable.drone));
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (droneMarker != null) {
+                    droneMarker.remove();
+                }
+
+                if (checkGpsCoordinates(droneLocationLat, droneLocationLng)) {
+                    droneMarker = myMap.addMarker(markerOptions);
+                }
+            }
+        });
+    }
+
+    private void initMapView() {
+
+        if (myMap == null) {
+            myMap = mapWidget.getMap();
+        }
+
+        DJILatLng ikramatic = new DJILatLng(3.0811006794504965, 101.56146941738935);
+        markerOptions.position(ikramatic);
+    }
+
+    public boolean checkGpsCoordinates(double v1, double v2) {
+        boolean result = false;
+        if (prevdroneLocationLat != v1 || prevdroneLocationLng != v2) {
+            prevdroneLocationLat = v1;
+            prevdroneLocationLng = v2;
+            result = true;
+        }
+        return result;
+    }
+
+    public void dualVideoModeInit(){
+        if(mRemotetController.checkLiveVideoStatus()){
+
+        }
+        else{
+            Toast.makeText(this,"No product",Toast.LENGTH_LONG).show();
         }
     }
 
+    public void dualVideoModeUpdate(Boolean aBoolean){
+        if(mRemotetController.setLiveVideoStatus(aBoolean)){
+            if(mRemotetController.getDualVideoStatus()){
+                dualVideoButton.setBackgroundResource(R.drawable.bgselectedbutton);
+                dualVideoButton.setTextColor(Color.parseColor("#000000"));
+            }
+            else{
+                dualVideoButton.setBackgroundResource(R.drawable.bgbutton);
+                dualVideoButton.setTextColor(Color.parseColor("#FFFFFF"));
+            }
+        }
+        else {
+            Toast.makeText(this,"No product",Toast.LENGTH_LONG).show();
+        }
+    }
 }
